@@ -102,6 +102,22 @@ function drawSkyline(ctx: CanvasRenderingContext2D, camX: number, time: number) 
     ctx.fillStyle = palette.body;
     ctx.fillRect(bx, by, bw, bh);
 
+    // Cheap volumetric shading — a lit left edge, a shaded right edge, as
+    // if the sun sits up and to the left — so each block reads as a solid
+    // form instead of a flat cutout.
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillRect(bx, by, 3, bh);
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.fillRect(bx + bw - 5, by, 5, bh);
+
+    // A soft contact shadow along the base, grounding the building instead
+    // of letting it float against whatever's behind it.
+    const baseShadow = ctx.createLinearGradient(0, by + bh - 10, 0, by + bh);
+    baseShadow.addColorStop(0, "rgba(0,0,0,0)");
+    baseShadow.addColorStop(1, "rgba(0,0,0,0.28)");
+    ctx.fillStyle = baseShadow;
+    ctx.fillRect(bx, by + bh - 10, bw, 10);
+
     // Roof cap + the odd rooftop water tank, a common Lagos skyline detail.
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     ctx.fillRect(bx, by, bw, 2);
@@ -149,6 +165,10 @@ function drawBridge(ctx: CanvasRenderingContext2D, camX: number) {
   ctx.fillStyle = "#5b6570";
   ctx.fillRect(0, deckY, VIEW_WIDTH, 6);
 
+  // Soft shadow the deck casts onto the water directly beneath it.
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fillRect(0, deckY + 6, VIEW_WIDTH, 3);
+
   const railPeriod = 10;
   ctx.fillStyle = "#8d99a6";
   for (let i = -1; i < VIEW_WIDTH / railPeriod + 2; i++) {
@@ -166,6 +186,16 @@ function drawStallsAndLights(ctx: CanvasRenderingContext2D, camX: number, time: 
 
   for (let i = -1; i < VIEW_WIDTH / period + 2; i++) {
     const sx = i * period - wrap(offset, period);
+
+    // Ground contact shadows for both the pole and the stall, cast before
+    // anything else in this pass so they sit underneath.
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath();
+    ctx.ellipse(sx + 11, baseY + 1, 4, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(sx + 55, baseY + 1, 22, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Streetlight: pole + lamp housing + a gently pulsing glow, offset per
     // light so they don't all breathe in lockstep.

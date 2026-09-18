@@ -82,8 +82,11 @@ export default function TouchControls({ onTouch }: Props) {
       <div className={`${SHELL} p-2.5`}>
         <div className="grid grid-cols-3 grid-rows-3 w-[112px] h-[112px] gap-[2px]">
           <div />
-          <PadButton onTouch={onTouch} part="crouch" className={`col-start-2 row-start-1 rounded-t-lg ${PAD_FACE}`}>
-            <span className="text-lg">▼</span>
+          {/* D-pad up doubles as jump — a common mobile-platformer
+              convention, and it completes the cross visually instead of
+              leaving a dead, arrow-less nub at the top. */}
+          <PadButton onTouch={onTouch} part="jump" className={`col-start-2 row-start-1 rounded-t-lg ${PAD_FACE}`}>
+            <span className="text-lg">▲</span>
           </PadButton>
           <div />
           <PadButton onTouch={onTouch} part="left" className={`col-start-1 row-start-2 rounded-l-lg ${PAD_FACE}`}>
@@ -94,18 +97,20 @@ export default function TouchControls({ onTouch }: Props) {
             <span className="text-lg">▶</span>
           </PadButton>
           <div />
-          <div className={`col-start-2 row-start-3 rounded-b-lg ${PAD_FACE}`} />
+          <PadButton onTouch={onTouch} part="crouch" className={`col-start-2 row-start-3 rounded-b-lg ${PAD_FACE}`}>
+            <span className="text-lg">▼</span>
+          </PadButton>
           <div />
         </div>
       </div>
 
-      {/* A / B buttons — close together with a slight diagonal stagger,
-          matching a real Game Boy Pocket's layout (Select/Start omitted;
-          this is a two-button game). Blank matte caps with a small
-          function label printed below, the way the real thing prints
-          "A"/"B" below the buttons rather than on them. */}
-      <div className={`${SHELL} px-5 pt-4 pb-3`}>
-        <div className="relative w-[104px] h-[58px]">
+      {/* A / B buttons — a clear diagonal stagger (throw low-left, jump
+          high-right), matching a real Game Boy Pocket's layout (Select/
+          Start omitted; this is a two-button game). Blank matte caps with
+          a small function label printed below, the way the real thing
+          prints "A"/"B" below the buttons rather than on them. */}
+      <div className={`${SHELL} px-6 pt-3 pb-3`}>
+        <div className="relative w-[150px] h-[104px]">
           <div className="absolute left-0 bottom-0 flex flex-col items-center gap-1.5">
             <PadButton onTouch={onTouch} part="throw" className={`w-12 h-12 rounded-full ${PAD_FACE}`} />
             <span className="text-[7px] font-bold text-[#c23a72] tracking-wide">THROW</span>

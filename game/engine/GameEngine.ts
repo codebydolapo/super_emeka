@@ -10,7 +10,7 @@ import {
   VIEW_WIDTH,
 } from "./constants";
 import { EndSummary, GamePhase, HudState, StageBanner } from "../types";
-import { BLOCK_TILES, blockContentForIndex, createLevel, LevelData } from "./Level";
+import { BLOCK_TILES, blockContentForIndex, createLevel, isSolidTile, LevelData } from "./Level";
 import { aabbOverlap } from "./Physics";
 import { Player } from "./Player";
 import { Camera } from "./Camera";
@@ -513,6 +513,16 @@ export class GameEngine {
     this.drawTiles(camX, camY);
     drawRoadStrip(ctx, camX);
 
+    // Ground-contact shadows, drawn under everything that stands or hovers
+    // above the tiles — the single biggest cue for "this is above the
+    // ground" vs. "this is flat on the ground" in a 2D scene with no real
+    // lighting. A flying enemy's shadow staying put on the ground while it
+    // bobs overhead is what actually sells its height.
+    for (const enemy of this.enemies) {
+      if (enemy.alive) this.drawGroundShadow(camX, camY, enemy.x + enemy.width / 2, enemy.y + enemy.height);
+    }
+    this.drawGroundShadow(camX, camY, this.player.x + this.player.width / 2, this.player.y + this.player.height);
+
     for (const coin of this.coins) coin.draw(ctx, camX, camY);
     for (const pickup of this.pickups) pickup.draw(ctx, camX, camY);
     for (const projectile of this.projectiles) projectile.draw(ctx, camX, camY);
@@ -523,6 +533,32 @@ export class GameEngine {
     this.drawDanfoBus(camX, camY);
     this.drawPopups(camX, camY);
     this.drawBossHealthBar();
+  }
+
+  /** Finds the top of the nearest solid tile at `x` at or below `fromY`,
+   * in world pixels — used to project a shadow onto the actual ground
+   * rather than just stamping it under an entity's feet (which wouldn't
+   * show height at all for anything airborne). Returns null over a gap. */
+  private groundYBelow(x: number, fromY: number): number | null {
+    const col = Math.floor(x / TILE_SIZE);
+    const startRow = Math.max(0, Math.floor(fromY / TILE_SIZE));
+    for (let row = startRow; row < this.level.rows; row++) {
+      if (isSolidTile(this.level.grid[row]?.[col])) return row * TILE_SIZE;
+    }
+    return null;
+  }
+
+  private drawGroundShadow(camX: number, camY: number, footX: number, footY: number) {
+    const groundY = this.groundYBelow(footX, footY);
+    if (groundY === null) return; // over a pothole/drainage — nothing to cast onto
+    const ctx = this.ctx;
+    const heightAbove = Math.max(0, groundY - footY);
+    const scale = Math.max(0.35, 1 - heightAbove / 70);
+    const alpha = Math.max(0.12, 0.32 - heightAbove / 250);
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.beginPath();
+    ctx.ellipse(footX - camX, groundY - camY - 1, 6 * scale, 2 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   /** Fixed to the screen (not the world), like a classic boss bar, so it
