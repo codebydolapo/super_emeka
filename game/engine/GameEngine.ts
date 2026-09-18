@@ -1,4 +1,6 @@
 import {
+  BOSS_ATTACK_INTERVAL_SECONDS,
+  BOSS_PROJECTILE_SPEED,
   COLORS,
   FIXED_DT,
   MAX_HEALTH,
@@ -53,6 +55,7 @@ export class GameEngine {
   private globalTime = 0;
   private timeAccumForSeconds = 0;
   private throwCooldown = 0;
+  private bossAttackTimer = BOSS_ATTACK_INTERVAL_SECONDS;
   private banner: StageBanner | null = null;
   private transitioning = false;
   private transitionTimer = 0;
@@ -85,12 +88,25 @@ export class GameEngine {
   private spawnEntitiesFromLevel() {
     for (const spawn of this.level.entities) {
       const worldX = spawn.col * TILE_SIZE;
-      if (spawn.kind === "hawker" || spawn.kind === "agbero") {
-        // Enemies stand on the ground: `row` is the tile they occupy, so
-        // their feet line up with the bottom of that tile.
+      if (
+        spawn.kind === "hawker" ||
+        spawn.kind === "agbero" ||
+        spawn.kind === "okada" ||
+        spawn.kind === "boss"
+      ) {
+        // Ground-based enemies: `row` is the tile they occupy, so their
+        // feet line up with the bottom of that tile.
         const feetY = (spawn.row + 1) * TILE_SIZE;
         this.enemies.push(
           new Enemy(spawn.kind, worldX, feetY, this.level.enemySpeedMultiplier)
+        );
+      } else if (spawn.kind === "mosquito") {
+        // Flying enemies hover around a center point instead of standing
+        // on a tile, so `row`/`col` describe the center of their tile.
+        const centerX = worldX + TILE_SIZE / 2;
+        const centerY = spawn.row * TILE_SIZE + TILE_SIZE / 2;
+        this.enemies.push(
+          new Enemy(spawn.kind, centerX, centerY, this.level.enemySpeedMultiplier)
         );
       } else if (spawn.kind === "coin") {
         // Floating collectibles are centered inside the authored tile
@@ -194,6 +210,7 @@ export class GameEngine {
     this.timeLeft = this.level.timeLimitSeconds;
     this.timeAccumForSeconds = 0;
     this.throwCooldown = 0;
+    this.bossAttackTimer = BOSS_ATTACK_INTERVAL_SECONDS;
     this.banner = null;
     this.camera.x = 0;
     this.camera.y = 0;
@@ -231,11 +248,13 @@ export class GameEngine {
     for (const pickup of this.pickups) pickup.update(dt, this.level);
     for (const coin of this.coins) coin.update(dt);
     for (const projectile of this.projectiles) projectile.update(dt, this.level);
+    this.updateBossAttack(dt);
 
     this.handlePlayerEnemyCollisions();
     this.handlePlayerPickupCollisions();
     this.handlePlayerCoinCollisions();
     this.handleProjectileEnemyCollisions();
+    this.handleBossProjectilePlayerCollisions();
     this.handleFallDeath();
     this.handleDanfoGoal();
 
@@ -276,24 +295,54 @@ export class GameEngine {
     const dir = this.player.facing;
     const x = dir === 1 ? this.player.x + this.player.width : this.player.x - 8;
     const y = this.player.y + this.player.height * 0.35;
-    this.projectiles.push(new Projectile(x, y, dir));
+    this.projectiles.push(new Projectile(x, y, dir, "player"));
     this.throwCooldown = THROW_COOLDOWN_SECONDS;
+    this.audio.playThrow();
+  }
+
+  /** Chief Agbero throws a bottle at the player on a fixed interval while
+   * alive — the only enemy that fights back at range. */
+  private updateBossAttack(dt: number) {
+    const boss = this.enemies.find((e) => e.kind === "boss" && e.alive);
+    if (!boss) return;
+    this.bossAttackTimer -= dt;
+    if (this.bossAttackTimer > 0) return;
+    this.bossAttackTimer = BOSS_ATTACK_INTERVAL_SECONDS;
+
+    const dir: 1 | -1 = this.player.x < boss.x ? -1 : 1;
+    const x = dir === 1 ? boss.x + boss.width : boss.x - 8;
+    const y = boss.y + boss.height * 0.3;
+    this.projectiles.push(new Projectile(x, y, dir, "boss", BOSS_PROJECTILE_SPEED));
     this.audio.playThrow();
   }
 
   private handleProjectileEnemyCollisions() {
     for (const projectile of this.projectiles) {
-      if (!projectile.active) continue;
+      if (!projectile.active || projectile.owner !== "player") continue;
       for (const enemy of this.enemies) {
         if (!enemy.alive) continue;
         if (!aabbOverlap(projectile, enemy)) continue;
         enemy.hit();
         projectile.active = false;
-        const points = enemy.kind === "agbero" ? 100 : 50;
+        const points = pointsForEnemy(enemy.kind);
         this.score += points;
         this.audio.playStomp();
         this.spawnPopup(`+${points}`, enemy.x, enemy.y - 4, "#ffffff");
         break;
+      }
+    }
+  }
+
+  private handleBossProjectilePlayerCollisions() {
+    for (const projectile of this.projectiles) {
+      if (!projectile.active || projectile.owner !== "boss") continue;
+      if (!aabbOverlap(projectile, this.player)) continue;
+      projectile.active = false;
+      if (this.player.takeDamage()) {
+        this.audio.playHurt();
+        this.player.vx = this.player.x < projectile.x ? -90 : 90;
+        this.player.vy = -90;
+        if (this.player.health <= 0) this.loseLife();
       }
     }
   }
@@ -340,7 +389,7 @@ export class GameEngine {
         // immediately after a successful stomp.
         this.player.y = enemy.y - this.player.height;
         this.player.vy = -140;
-        const points = enemy.kind === "agbero" ? 100 : 50;
+        const points = pointsForEnemy(enemy.kind);
         this.score += points;
         this.audio.playStomp();
         this.spawnPopup(`+${points}`, enemy.x, enemy.y - 4, "#ffffff");
@@ -473,6 +522,30 @@ export class GameEngine {
 
     this.drawDanfoBus(camX, camY);
     this.drawPopups(camX, camY);
+    this.drawBossHealthBar();
+  }
+
+  /** Fixed to the screen (not the world), like a classic boss bar, so it
+   * stays put regardless of camera scroll. */
+  private drawBossHealthBar() {
+    const boss = this.enemies.find((e) => e.kind === "boss" && e.alive);
+    if (!boss) return;
+    const ctx = this.ctx;
+    const w = 120;
+    const x = VIEW_WIDTH / 2 - w / 2;
+    const y = 12;
+    const ratio = Math.max(0, boss.health / boss.maxHealth);
+
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(x - 3, y - 11, w + 6, 19);
+    ctx.textAlign = "center";
+    ctx.font = "8px monospace";
+    ctx.fillStyle = "#ffd400";
+    ctx.fillText("CHIEF AGBERO", VIEW_WIDTH / 2, y - 2);
+    ctx.fillStyle = "#3a2020";
+    ctx.fillRect(x, y, w, 5);
+    ctx.fillStyle = ratio > 0.3 ? "#e0453a" : "#ff8a65";
+    ctx.fillRect(x, y, Math.round(w * ratio), 5);
   }
 
   private drawThrowMeter(camX: number, camY: number) {
@@ -706,6 +779,17 @@ export class GameEngine {
       ctx.fillText(popup.text, popup.x - camX, popup.y - camY);
     }
     ctx.globalAlpha = 1;
+  }
+}
+
+function pointsForEnemy(kind: Enemy["kind"]): number {
+  switch (kind) {
+    case "boss":
+      return 300;
+    case "agbero":
+      return 100;
+    default:
+      return 50;
   }
 }
 

@@ -2,7 +2,7 @@ import { STAGE_COUNT, TILE_SIZE } from "./constants";
 
 export const LEVEL_ROWS = 12;
 
-export type EntityKind = "hawker" | "agbero" | "coin" | "suya" | "zobo";
+export type EntityKind = "hawker" | "agbero" | "okada" | "mosquito" | "boss" | "coin" | "suya" | "zobo";
 
 export interface EntitySpawn {
   kind: EntityKind;
@@ -80,6 +80,14 @@ const BLOCK_ROW_LOW = (rows: number) => rows - 4; // easy single-hop height
 const BLOCK_ROW_MID = (rows: number) => rows - 5; // a fuller jump
 const BONUS_ROW = (rows: number) => rows - 6; // near max jump height — bonus
 const BYPASS_ROW = (rows: number) => rows - 3; // low bridge over a barricade
+const HOVER_ROW = (rows: number) => rows - 6; // mosquito hover height — needs a real jump to reach
+
+// Difficulty gates for when new enemy types start appearing, expressed as a
+// minimum `t` (the same 0..1 ramp everything else uses). Hawkers are always
+// available; Okadas and Mosquitoes are introduced gradually so early stages
+// stay simple.
+const OKADA_UNLOCK_T = 0.2; // stage ~3+
+const MOSQUITO_UNLOCK_T = 0.45; // stage ~5+
 
 /**
  * Builds one procedurally generated stage. Reachability is guaranteed by
@@ -132,6 +140,27 @@ export function createLevel(stageNumber: number): LevelData {
     return width;
   };
 
+  // The stage-10 finale: a wider arena with nowhere to hop over the fight —
+  // deliberately no bypass bridge, since a boss is meant to be fought, not
+  // skipped. Ground stays solid the whole way through.
+  const placeBossArena = (col: number): number => {
+    const width = 18;
+    entities.push({ kind: "boss", col: col + 9, row: STOMP_ROW(rows) });
+    return width;
+  };
+
+  const placePatrolEnemy = (col: number) => {
+    if (t >= OKADA_UNLOCK_T && rng() < 0.4) {
+      entities.push({ kind: "okada", col, row: STOMP_ROW(rows) });
+    } else {
+      entities.push({ kind: "hawker", col, row: STOMP_ROW(rows) });
+    }
+  };
+
+  const placeMosquito = (col: number) => {
+    entities.push({ kind: "mosquito", col, row: HOVER_ROW(rows) });
+  };
+
   const placeGap = (col: number): number => {
     const isDrainage = rng() < drainageChance;
     const width = isDrainage ? 3 : 2;
@@ -141,9 +170,12 @@ export function createLevel(stageNumber: number): LevelData {
   };
 
   // Evenly spread any extra Agbero gates (beyond the guaranteed final one)
-  // across the middle of the level.
+  // across the middle of the level. Stage 10 gets a boss arena instead of a
+  // regular gate at the very end, which needs a bit more room.
+  const isFinalStage = stage === STAGE_COUNT;
   const startBuffer = 6;
-  const tailReserve = 13 /* final gate */ + 4 /* landing */ + 6 /* trailing */;
+  const finalGateWidth = isFinalStage ? 18 : 13;
+  const tailReserve = finalGateWidth + 4 /* landing */ + 6 /* trailing */;
   const mainEnd = cols - tailReserve;
   const extraGates = gateCount - 1;
   const extraGateCols: number[] = [];
@@ -157,7 +189,7 @@ export function createLevel(stageNumber: number): LevelData {
     const nextGateCol = extraGateCols.find((g) => g >= col && g <= col + maxSafe);
     if (nextGateCol !== undefined) {
       const safeLen = nextGateCol - col;
-      if (safeLen >= 3 && rng() < hawkerChance) placeHawker(entities, col + 2, rows);
+      if (safeLen >= 3 && rng() < hawkerChance) placePatrolEnemy(col + 2);
       col = nextGateCol;
       col += placeAgberoGate(col);
       col += 4; // forced safe landing after a gate
@@ -176,7 +208,10 @@ export function createLevel(stageNumber: number): LevelData {
         placeCoinArc(col + 1);
       }
       if (safeLen >= 4 && rng() < hawkerChance) {
-        placeHawker(entities, col + Math.floor(safeLen / 2), rows);
+        placePatrolEnemy(col + Math.floor(safeLen / 2));
+      }
+      if (t >= MOSQUITO_UNLOCK_T && safeLen >= 5 && rng() < 0.3) {
+        placeMosquito(col + Math.floor(safeLen / 2));
       }
     }
     col += safeLen;
@@ -189,9 +224,10 @@ export function createLevel(stageNumber: number): LevelData {
     }
   }
 
-  // Guaranteed final gate right before the goal, then a clean run-up.
+  // Guaranteed final gate right before the goal, then a clean run-up. Stage
+  // 10 gets the boss arena instead of a regular Agbero gate.
   col = Math.max(col, mainEnd);
-  col += placeAgberoGate(col);
+  col += isFinalStage ? placeBossArena(col) : placeAgberoGate(col);
   col += 4;
   const danfoCol = Math.min(cols - 4, col + 1);
 
@@ -213,10 +249,6 @@ export function createLevel(stageNumber: number): LevelData {
     timeLimitSeconds,
     enemySpeedMultiplier,
   };
-}
-
-function placeHawker(entities: EntitySpawn[], col: number, rows: number) {
-  entities.push({ kind: "hawker", col, row: STOMP_ROW(rows) });
 }
 
 export function tileAtWorld(level: LevelData, worldX: number, worldY: number): string {

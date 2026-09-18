@@ -49,6 +49,10 @@ export const PROJECTILE_LIFETIME_SECONDS = 1.1;
 export const PROJECTILE_WIDTH = 8;
 export const PROJECTILE_HEIGHT = 6;
 
+// Chief Agbero (stage 10 boss)
+export const BOSS_ATTACK_INTERVAL_SECONDS = 2.2;
+export const BOSS_PROJECTILE_SPEED = 130; // slower than the player's slipper — it arcs, so it needs to be dodgeable
+
 export const STORAGE_KEYS = {
   highScore: "super-emeka:high-score",
   muted: "super-emeka:muted",

@@ -42,6 +42,17 @@ export const PALETTE: Record<string, string> = {
   X: "#4a2a10", // suya dark char
   f: "#ff7a1a", // slipper sole
   F: "#3a2414", // slipper strap
+  m: "#c0392b", // okada bike body
+  M: "#821f13", // okada bike shade
+  h: "#232323", // okada helmet
+  q: "#4a4a3a", // mosquito body
+  Q: "#2e2e22", // mosquito body shade
+  z: "#d4a017", // chief agbero cap main (gold)
+  Z: "#a67c14", // chief agbero cap shade
+  j: "#6c3483", // chief agbero agbada (rich purple)
+  J: "#4a2360", // chief agbero agbada shade
+  e: "#3a7d44", // bottle glass
+  E: "#255830", // bottle glass shade
 };
 
 function seg(...parts: Array<[number, string]>): string {
@@ -183,6 +194,93 @@ export const AGBERO: PixelMatrix = [
 ];
 
 // ---------------------------------------------------------------------
+// Chief Agbero — the stage-10 boss. Same silhouette as a regular Agbero
+// (drawn bigger via a scale factor in Entities.ts) but recolored: a gold
+// chief's cap instead of a bandana, and a purple agbada instead of a vest,
+// so it reads as a distinct, more important figure at a glance.
+// ---------------------------------------------------------------------
+
+export const CHIEF_AGBERO: PixelMatrix = [
+  seg([3, "."], [8, "z"], [3, "."]),
+  seg([2, "."], [1, "k"], [8, "z"], [1, "k"], [2, "."]),
+  seg([1, "."], [1, "k"], [10, "Z"], [1, "k"], [1, "."]),
+  seg([2, "."], [1, "k"], [8, "B"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [2, "b"], [1, "w"], [1, "k"], [4, "b"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [8, "b"], [1, "k"], [2, "."]),
+  seg([4, "."], [1, "k"], [4, "b"], [1, "k"], [4, "."]),
+  seg([1, "."], [1, "k"], [1, "b"], [1, "k"], [6, "j"], [1, "k"], [1, "b"], [1, "k"], [1, "."]),
+  seg([1, "k"], [2, "b"], [1, "k"], [1, "J"], [4, "j"], [1, "J"], [1, "k"], [2, "b"], [1, "k"]),
+  seg([1, "k"], [2, "b"], [1, "k"], [6, "j"], [1, "k"], [2, "b"], [1, "k"]),
+  seg([1, "."], [1, "k"], [1, "b"], [1, "k"], [1, "y"], [4, "j"], [1, "y"], [1, "k"], [1, "b"], [1, "k"], [1, "."]),
+  seg([2, "."], [1, "k"], [8, "j"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [8, "y"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [8, "n"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [3, "n"], [2, "."], [3, "n"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [3, "n"], [2, "."], [3, "n"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [3, "n"], [2, "."], [3, "n"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [3, "N"], [2, "."], [3, "N"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [3, "N"], [2, "."], [3, "N"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [3, "s"], [2, "."], [3, "s"], [1, "k"], [2, "."]),
+];
+
+// ---------------------------------------------------------------------
+// Okada — a fast danfo-lane hazard. 20 wide x 16 tall: rider up top,
+// motorcycle body and two big wheels below.
+// ---------------------------------------------------------------------
+
+export const OKADA: PixelMatrix = [
+  seg([7, "."], [6, "h"], [7, "."]),
+  seg([6, "."], [1, "k"], [6, "h"], [1, "k"], [6, "."]),
+  seg([5, "."], [1, "k"], [8, "g"], [1, "k"], [5, "."]),
+  seg([5, "."], [1, "k"], [8, "g"], [1, "k"], [5, "."]),
+  seg([3, "."], [1, "k"], [2, "b"], [8, "m"], [2, "b"], [1, "k"], [3, "."]),
+  seg([2, "."], [1, "k"], [14, "m"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [14, "M"], [1, "k"], [2, "."]),
+  seg([3, "."], [1, "k"], [12, "M"], [1, "k"], [3, "."]),
+  seg([4, "."], [12, "k"], [4, "."]),
+  seg([3, "."], [4, "k"], [6, "."], [4, "k"], [3, "."]),
+  seg([2, "."], [6, "k"], [4, "."], [6, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [4, "S"], [1, "k"], [4, "."], [1, "k"], [4, "S"], [1, "k"], [2, "."]),
+  seg([2, "."], [6, "k"], [4, "."], [6, "k"], [2, "."]),
+  seg([3, "."], [4, "k"], [6, "."], [4, "k"], [3, "."]),
+  seg([20, "."]),
+  seg([20, "."]),
+];
+
+// ---------------------------------------------------------------------
+// Mosquito — a small flying hazard. 12 wide x 10 tall, hovers instead of
+// walking a patrol lane.
+// ---------------------------------------------------------------------
+
+export const MOSQUITO: PixelMatrix = [
+  seg([4, "."], [1, "i"], [2, "."], [1, "i"], [4, "."]),
+  seg([3, "."], [2, "i"], [2, "."], [2, "i"], [3, "."]),
+  seg([3, "."], [1, "k"], [4, "q"], [1, "k"], [3, "."]),
+  seg([2, "."], [1, "k"], [6, "q"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [2, "q"], [2, "Q"], [2, "q"], [1, "k"], [2, "."]),
+  seg([2, "."], [1, "k"], [6, "Q"], [1, "k"], [2, "."]),
+  seg([3, "."], [1, "k"], [4, "Q"], [1, "k"], [3, "."]),
+  seg([4, "."], [1, "k"], [2, "."], [1, "k"], [4, "."]),
+  seg([4, "."], [1, "k"], [2, "."], [1, "k"], [4, "."]),
+  seg([12, "."]),
+];
+
+// ---------------------------------------------------------------------
+// Bottle — the boss's thrown projectile. 8 wide x 8 tall.
+// ---------------------------------------------------------------------
+
+export const BOTTLE: PixelMatrix = [
+  seg([3, "."], [2, "k"], [3, "."]),
+  seg([3, "."], [2, "k"], [3, "."]),
+  seg([2, "."], [1, "k"], [2, "e"], [1, "k"], [2, "."]),
+  seg([1, "k"], [6, "e"], [1, "k"]),
+  seg([1, "k"], [6, "e"], [1, "k"]),
+  seg([1, "k"], [6, "E"], [1, "k"]),
+  seg([1, "."], [1, "k"], [4, "E"], [1, "k"], [1, "."]),
+  seg([8, "."]),
+];
+
+// ---------------------------------------------------------------------
 // Naira coin — 10 wide x 10 tall, two spin frames.
 // ---------------------------------------------------------------------
 
@@ -279,7 +377,8 @@ export function drawSprite(
   x: number,
   y: number,
   flipX = false,
-  alpha = 1
+  alpha = 1,
+  scale = 1
 ) {
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -294,7 +393,12 @@ export function drawSprite(
       if (!color) continue;
       const px = flipX ? w - 1 - col : col;
       ctx.fillStyle = color;
-      ctx.fillRect(Math.round(x + px), Math.round(y + row), 1, 1);
+      ctx.fillRect(
+        Math.round(x + px * scale),
+        Math.round(y + row * scale),
+        scale,
+        scale
+      );
     }
   }
   ctx.restore();
