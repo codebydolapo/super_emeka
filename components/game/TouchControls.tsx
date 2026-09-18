@@ -1,123 +1,223 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import { TouchPart } from "@/game/engine/Input";
+import React, { useCallback, useRef, useState } from "react";
+
+// Assuming TouchPart type includes: "left" | "right" | "jump" | "crouch" | "throw"
+export type TouchPart = "left" | "right" | "jump" | "crouch" | "throw";
 
 interface Props {
   onTouch: (part: TouchPart, pressed: boolean) => void;
 }
 
-function useHoldButton(onTouch: (part: TouchPart, pressed: boolean) => void, part: TouchPart) {
-  const active = useRef(false);
+// Shell & retro styling
+const SHELL =
+  "pointer-events-auto bg-gradient-to-b from-[#2b2b2e] to-[#0c0c0d] rounded-3xl border border-black/80 shadow-[0_6px_0_rgba(0,0,0,0.8),0_10px_20px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-sm";
 
-  const start = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      if (active.current) return;
-      active.current = true;
-      onTouch(part, true);
-    },
-    [onTouch, part]
-  );
+const PAD_FACE =
+  "bg-gradient-to-b from-[#3c3c3e] to-[#18181a] text-[#cfcfd2] active:from-[#252527] active:to-[#0f0f10]";
 
-  const end = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      if (!active.current) return;
-      active.current = false;
-      onTouch(part, false);
-    },
-    [onTouch, part]
-  );
-
-  return {
-    onPointerDown: start,
-    onPointerUp: end,
-    onPointerLeave: end,
-    onPointerCancel: end,
-  };
-}
-
-function PadButton({
+/**
+ * Enhanced Standalone Action Button (A/B style) with Touch Pointer ID Tracking
+ */
+function ActionButton({
   onTouch,
   part,
-  children,
+  label,
   className = "",
 }: {
   onTouch: (part: TouchPart, pressed: boolean) => void;
   part: TouchPart;
-  children?: React.ReactNode;
+  label: string;
   className?: string;
 }) {
-  const handlers = useHoldButton(onTouch, part);
+  const pointerIdRef = useRef<number | null>(null);
+  const [isPressed, setIsPressed] = useState(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (pointerIdRef.current !== null) return;
+
+    pointerIdRef.current = e.pointerId;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setIsPressed(true);
+    onTouch(part, true);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (e.pointerId !== pointerIdRef.current) return;
+    e.preventDefault();
+    pointerIdRef.current = null;
+    setIsPressed(false);
+    onTouch(part, false);
+  };
+
   return (
-    <button
-      type="button"
-      {...handlers}
-      className={`relative select-none flex items-center justify-center touch-none transition-transform duration-75 active:scale-90 active:brightness-75 ${className}`}
-      style={{ WebkitUserSelect: "none" }}
-    >
-      {/* Glossy top-lit highlight, purely decorative */}
-      <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/20 via-white/0 to-black/20" />
-      <span className="relative">{children}</span>
-    </button>
+    <div className="flex flex-col items-center gap-1.5 select-none">
+      <button
+        type="button"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        className={`relative touch-none flex items-center justify-center w-14 h-14 rounded-full transition-transform duration-75 ${PAD_FACE} ${
+          isPressed ? "scale-90 brightness-75 shadow-inner" : "shadow-[0_4px_0_rgba(0,0,0,0.6)]"
+        } ${className}`}
+        style={{ WebkitUserSelect: "none", touchAction: "none" }}
+      >
+        <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/15 via-transparent to-black/30" />
+      </button>
+      <span className="text-[9px] font-black text-[#d6457d] tracking-wider uppercase drop-shadow-[0_1px_0_rgba(0,0,0,0.8)]">
+        {label}
+      </span>
+    </div>
   );
 }
 
-// Matte black plastic shell shared by both control clusters — a subtle
-// sheen instead of gloss, matching a worn Game Boy Pocket case rather than
-// a shiny toy.
-const SHELL =
-  "pointer-events-auto bg-gradient-to-b from-[#2b2b2e] to-[#0c0c0d] rounded-2xl border border-black shadow-[0_5px_0_rgba(0,0,0,0.7),0_6px_14px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)]";
+/**
+ * Continuous D-Pad with sliding touch gesture resolution
+ */
+function DPad({ onTouch }: Props) {
+  const padRef = useRef<HTMLDivElement>(null);
+  const activePartRef = useRef<TouchPart | null>(null);
 
-const PAD_FACE = "bg-gradient-to-b from-[#3c3c3e] to-[#18181a] text-[#cfcfd2]";
+  const updateDirection = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!padRef.current) return;
+
+      const rect = padRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      const dx = clientX - centerX;
+      const dy = clientY - centerY;
+      const distance = Math.hypot(dx, dy);
+
+      // Deadzone threshold (within 15% of center radius)
+      const deadzone = rect.width * 0.15;
+      let newPart: TouchPart | null = null;
+
+      if (distance > deadzone) {
+        // Calculate angle relative to center
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+        if (angle >= -45 && angle < 45) {
+          newPart = "right";
+        } else if (angle >= 45 && angle < 135) {
+          newPart = "crouch";
+        } else if (angle >= -135 && angle < -45) {
+          newPart = "jump";
+        } else {
+          newPart = "left";
+        }
+      }
+
+      if (activePartRef.current !== newPart) {
+        if (activePartRef.current) {
+          onTouch(activePartRef.current, false);
+        }
+        if (newPart) {
+          onTouch(newPart, true);
+        }
+        activePartRef.current = newPart;
+      }
+    },
+    [onTouch]
+  );
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    updateDirection(e.clientX, e.clientY);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (activePartRef.current !== null) {
+      updateDirection(e.clientX, e.clientY);
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.preventDefault();
+    if (activePartRef.current) {
+      onTouch(activePartRef.current, false);
+      activePartRef.current = null;
+    }
+  };
+
+  const currentPart = activePartRef.current;
+
+  return (
+    <div
+      ref={padRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className="relative w-36 h-36 touch-none select-none flex items-center justify-center cursor-pointer"
+      style={{ touchAction: "none", WebkitUserSelect: "none" }}
+    >
+      {/* D-Pad Base Visual */}
+      <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 p-1">
+        {/* Top / Jump */}
+        <div
+          className={`col-start-2 row-start-1 rounded-t-xl flex items-center justify-center transition-colors ${PAD_FACE} ${
+            currentPart === "jump" ? "brightness-150 bg-neutral-700" : ""
+          }`}
+        >
+          <span className="text-xs">▲</span>
+        </div>
+        {/* Left */}
+        <div
+          className={`col-start-1 row-start-2 rounded-l-xl flex items-center justify-center transition-colors ${PAD_FACE} ${
+            currentPart === "left" ? "brightness-150 bg-neutral-700" : ""
+          }`}
+        >
+          <span className="text-xs">◀</span>
+        </div>
+        {/* Center Pivot */}
+        <div className={`col-start-2 row-start-2 ${PAD_FACE} flex items-center justify-center`}>
+          <div className="w-3 h-3 rounded-full bg-black/40 inset-shadow-sm" />
+        </div>
+        {/* Right */}
+        <div
+          className={`col-start-3 row-start-2 rounded-r-xl flex items-center justify-center transition-colors ${PAD_FACE} ${
+            currentPart === "right" ? "brightness-150 bg-neutral-700" : ""
+          }`}
+        >
+          <span className="text-xs">▶</span>
+        </div>
+        {/* Bottom / Crouch */}
+        <div
+          className={`col-start-2 row-start-3 rounded-b-xl flex items-center justify-center transition-colors ${PAD_FACE} ${
+            currentPart === "crouch" ? "brightness-150 bg-neutral-700" : ""
+          }`}
+        >
+          <span className="text-xs">▼</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function TouchControls({ onTouch }: Props) {
   return (
     <div
-      className="absolute inset-x-0 bottom-0 z-30 px-5 sm:px-8 flex items-end justify-between pointer-events-none select-none"
-      style={{ paddingBottom: "max(1.1rem, env(safe-area-inset-bottom, 0px))" }}
+      className="fixed inset-x-0 bottom-0 z-50 px-4 sm:px-10 flex items-end justify-between pointer-events-none select-none mb-12"
+      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}
     >
-      {/* D-pad, Game Boy Pocket style */}
-      <div className={`${SHELL} p-2.5`}>
-        <div className="grid grid-cols-3 grid-rows-3 w-[112px] h-[112px] gap-[2px]">
-          <div />
-          {/* D-pad up doubles as jump — a common mobile-platformer
-              convention, and it completes the cross visually instead of
-              leaving a dead, arrow-less nub at the top. */}
-          <PadButton onTouch={onTouch} part="jump" className={`col-start-2 row-start-1 rounded-t-lg ${PAD_FACE}`}>
-            <span className="text-lg">▲</span>
-          </PadButton>
-          <div />
-          <PadButton onTouch={onTouch} part="left" className={`col-start-1 row-start-2 rounded-l-lg ${PAD_FACE}`}>
-            <span className="text-lg">◀</span>
-          </PadButton>
-          <div className={`col-start-2 row-start-2 ${PAD_FACE}`} />
-          <PadButton onTouch={onTouch} part="right" className={`col-start-3 row-start-2 rounded-r-lg ${PAD_FACE}`}>
-            <span className="text-lg">▶</span>
-          </PadButton>
-          <div />
-          <PadButton onTouch={onTouch} part="crouch" className={`col-start-2 row-start-3 rounded-b-lg ${PAD_FACE}`}>
-            <span className="text-lg">▼</span>
-          </PadButton>
-          <div />
-        </div>
+      {/* Left Control Cluster: D-pad */}
+      <div className={`p-3`}>
+        <DPad onTouch={onTouch} />
       </div>
 
-      {/* A / B buttons — a clear diagonal stagger (throw low-left, jump
-          high-right), matching a real Game Boy Pocket's layout (Select/
-          Start omitted; this is a two-button game). Blank matte caps with
-          a small function label printed below, the way the real thing
-          prints "A"/"B" below the buttons rather than on them. */}
-      <div className={`${SHELL} px-6 pt-3 pb-3`}>
-        <div className="relative w-[150px] h-[104px]">
-          <div className="absolute left-0 bottom-0 flex flex-col items-center gap-1.5">
-            <PadButton onTouch={onTouch} part="throw" className={`w-12 h-12 rounded-full ${PAD_FACE}`} />
-            <span className="text-[7px] font-bold text-[#c23a72] tracking-wide">THROW</span>
+      {/* Right Control Cluster: Action Buttons */}
+      <div className={` px-6 py-5`}>
+        <div className="relative w-36 h-28 flex items-center justify-between">
+          <div className="absolute left-0 bottom-0">
+            <ActionButton onTouch={onTouch} part="throw" label="Throw" />
           </div>
-          <div className="absolute right-0 top-0 flex flex-col items-center gap-1.5">
-            <PadButton onTouch={onTouch} part="jump" className={`w-12 h-12 rounded-full ${PAD_FACE}`} />
-            <span className="text-[7px] font-bold text-[#c23a72] tracking-wide">JUMP</span>
+          <div className="absolute right-0 top-0">
+            <ActionButton onTouch={onTouch} part="jump" label="Jump" />
           </div>
         </div>
       </div>

@@ -149,7 +149,7 @@ export default function Home() {
         {phase === "howtoplay" && <HowToPlayModal onBack={() => setPhase("start")} />}
 
         {showGame && (
-          <>
+          <div className="">
             <GameCanvas
               key={gameKey}
               ref={canvasHandleRef}
@@ -169,7 +169,7 @@ export default function Home() {
             {phase === "levelclear" && endSummary && (
               <StageClearModal summary={endSummary} onPlayAgain={startRun} onMainMenu={handleMainMenu} />
             )}
-          </>
+          </div>
         )}
       </div>
     </main>

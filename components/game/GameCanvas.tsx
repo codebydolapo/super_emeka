@@ -87,8 +87,15 @@ const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanvas(
 
     const resize = () => {
       const rect = wrapper.getBoundingClientRect();
+      // The wrapper's own top padding (used to push the canvas down below
+      // the HUD on mobile — see the JSX below) isn't reflected in
+      // getBoundingClientRect(), so it has to be subtracted by hand or the
+      // canvas gets sized for more height than is actually available and
+      // ends up cropped further than the cap intends.
+      const paddingTop = parseFloat(window.getComputedStyle(wrapper).paddingTop) || 0;
+      const availableHeight = Math.max(1, rect.height - paddingTop);
       const widthScale = rect.width / VIEW_WIDTH;
-      const heightScale = rect.height / VIEW_HEIGHT;
+      const heightScale = availableHeight / VIEW_HEIGHT;
       const containScale = Math.min(widthScale, heightScale);
       const coverScale = Math.max(widthScale, heightScale);
       const cropCap = containScale / (1 - maxCropFraction);
@@ -114,7 +121,14 @@ const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanvas(
   return (
     <div
       ref={wrapperRef}
-      className="absolute inset-0 flex items-center justify-center bg-black overflow-hidden"
+      // Below `sm`, the game area is the full (uncapped) mobile viewport
+      // height — centering the canvas in all of that leaves a big dead gap
+      // above it (behind the HUD) and another below (behind the touch
+      // controls). Anchoring to the top instead, with just enough padding
+      // to clear the HUD, pulls the actual game screen up where it's
+      // wanted. At `sm:` and up the game area is already the tidy 900x600
+      // capped box, so it goes back to simple centering.
+      className="absolute inset-0 flex items-start sm:items-center justify-center bg-black overflow-hidden pt-14 sm:pt-0"
     >
       <canvas
         ref={canvasRef}
