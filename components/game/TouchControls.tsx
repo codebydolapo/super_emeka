@@ -11,7 +11,7 @@ interface Props {
 
 // Shell & retro styling
 const SHELL =
-  "pointer-events-auto bg-gradient-to-b from-[#2b2b2e] to-[#0c0c0d] rounded-3xl border border-black/80 shadow-[0_6px_0_rgba(0,0,0,0.8),0_10px_20px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-sm";
+  "pointer-events-auto from-[#2b2b2e] to-[#0c0c0d] rounded-3xl border border-black/80 shadow-[0_6px_0_rgba(0,0,0,0.8),0_10px_20px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-sm";
 
 const PAD_FACE =
   "bg-gradient-to-b from-[#3c3c3e] to-[#18181a] text-[#cfcfd2] active:from-[#252527] active:to-[#0f0f10]";
@@ -79,6 +79,13 @@ function ActionButton({
 function DPad({ onTouch }: Props) {
   const padRef = useRef<HTMLDivElement>(null);
   const activePartRef = useRef<TouchPart | null>(null);
+  // Tracks whether the pad is currently being held, independent of
+  // `activePartRef` — which is also `null` while a finger sits in the
+  // dead zone. Gating pointermove on `activePartRef.current !== null`
+  // (as this used to) meant that starting a drag from dead-center and
+  // sliding outward without lifting never registered a direction, since
+  // the move handler bailed out every time before ever computing one.
+  const isDownRef = useRef(false);
 
   const updateDirection = useCallback(
     (clientX: number, clientY: number) => {
@@ -127,17 +134,19 @@ function DPad({ onTouch }: Props) {
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    isDownRef.current = true;
     updateDirection(e.clientX, e.clientY);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (activePartRef.current !== null) {
+    if (isDownRef.current) {
       updateDirection(e.clientX, e.clientY);
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     e.preventDefault();
+    isDownRef.current = false;
     if (activePartRef.current) {
       onTouch(activePartRef.current, false);
       activePartRef.current = null;
@@ -202,16 +211,25 @@ function DPad({ onTouch }: Props) {
 export default function TouchControls({ onTouch }: Props) {
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-50 px-4 sm:px-10 flex items-end justify-between pointer-events-none select-none mb-12"
+      // `absolute`, not `fixed` — this overlays the game's own container
+      // (which is the full viewport on mobile but a centered, capped box
+      // on larger touch screens), matching how the HUD and every modal in
+      // this app are positioned. `fixed` would anchor to the browser
+      // window instead, putting the controls in the wrong place whenever
+      // the game area isn't literally the whole viewport.
+      className="absolute inset-x-0 bottom-0 z-50 px-4 sm:px-10 flex items-end justify-between pointer-events-none select-none mb-12"
       style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}
     >
-      {/* Left Control Cluster: D-pad */}
-      <div className={`p-3`}>
+      {/* Left Control Cluster: D-pad. `SHELL` carries `pointer-events-auto`
+          — without it here, the `pointer-events-none` on the row above
+          (needed so this overlay doesn't block taps on the game behind
+          it) cascades down and swallows every touch on the pad too. */}
+      <div className={`${SHELL} p-3`}>
         <DPad onTouch={onTouch} />
       </div>
 
       {/* Right Control Cluster: Action Buttons */}
-      <div className={` px-6 py-5`}>
+      <div className={`${SHELL} px-6 py-5`}>
         <div className="relative w-36 h-28 flex items-center justify-between">
           <div className="absolute left-0 bottom-0">
             <ActionButton onTouch={onTouch} part="throw" label="Throw" />
