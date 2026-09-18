@@ -51,10 +51,7 @@ export default function HowToPlayModal({ onBack }: Props) {
           <p>Hit &quot;?&quot; blocks for Naira coins, Suya (+1 Health), or Cold Zobo (speed boost)!</p>
         </section>
 
-        <button
-          onClick={onBack}
-          className="w-full mt-2 py-3 bg-naija-yellow text-black text-xs border-2 border-black shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none transition-transform"
-        >
+        <button onClick={onBack} className="btn-pixel btn-pixel-yellow w-full mt-2 py-3 text-xs">
           ⬅ BACK
         </button>
       </div>

@@ -44,13 +44,13 @@ export default function StartScreen({
 
         <button
           onClick={onPlay}
-          className="w-full py-3 bg-naija-yellow text-black text-xs sm:text-sm border-2 border-black shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none transition-transform"
+          className="btn-pixel btn-pixel-yellow w-full py-3.5 text-xs sm:text-sm"
         >
           ▶ PLAY GAME
         </button>
         <button
           onClick={onHowToPlay}
-          className="w-full py-3 bg-white text-black text-xs sm:text-sm border-2 border-black shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none transition-transform"
+          className="btn-pixel btn-pixel-white w-full py-3.5 text-xs sm:text-sm"
         >
           ❓ HOW TO PLAY
         </button>

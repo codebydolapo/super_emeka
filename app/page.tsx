@@ -48,6 +48,7 @@ export default function Home() {
   useEffect(() => {
     setMuted(audio.isMuted);
     setHud((h) => ({ ...h, highScore: getHighScore() }));
+    audio.attachAutoResume();
 
     // Not every mobile/tablet browser reports a coarse pointer or touch
     // points reliably, so a narrow viewport is treated as its own signal —
@@ -131,7 +132,10 @@ export default function Home() {
 
   return (
     <main className="fixed inset-0 w-full h-full bg-[#0a0a12] overflow-hidden flex items-center justify-center">
-      <div className="relative w-full h-full max-w-[900px] max-h-[600px] scanlines">
+      {/* No size cap below `sm` — small screens are already tight on
+          space, so the game should fill the whole viewport there. The
+          900x600 cap only kicks in once there's room to spare. */}
+      <div className="relative w-full h-full sm:max-w-[900px] sm:max-h-[600px] scanlines">
         {phase === "start" && (
           <StartScreen
             highScore={hud.highScore}

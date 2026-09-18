@@ -62,18 +62,41 @@ const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanvas(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Integer-scale the fixed-resolution canvas to fill its container while
-  // keeping pixel art perfectly crisp at any viewport size.
+  // Scale the fixed-resolution canvas to fill its container.
+  //
+  // The internal resolution (320x180) is landscape, but a phone held in
+  // portrait is roughly the opposite shape — fitting the full width means
+  // most of the screen above and below the canvas goes to waste as black
+  // bars. Instead of always showing the complete width ("contain"), this
+  // biases toward filling the screen ("cover") and lets the wrapper's
+  // `overflow-hidden` clip a bit of the world off the left/right edges —
+  // capped at `maxCropFraction` so a portrait phone doesn't crop away so
+  // much that gameplay near the edges disappears. On a roughly-matching
+  // aspect ratio (landscape phones, tablets, desktop) this converges to
+  // the same full-width fit as before, with no cropping at all.
+  //
+  // Integer scaling on top of that keeps pixel art perfectly crisp when
+  // it doesn't cost much size; below a small penalty, fill the screen
+  // instead even if that means fractional-pixel scaling.
   useEffect(() => {
     const wrapper = wrapperRef.current;
     const canvas = canvasRef.current;
     if (!wrapper || !canvas) return;
 
+    const maxCropFraction = 0.22;
+
     const resize = () => {
       const rect = wrapper.getBoundingClientRect();
-      const rawScale = Math.min(rect.width / VIEW_WIDTH, rect.height / VIEW_HEIGHT);
+      const widthScale = rect.width / VIEW_WIDTH;
+      const heightScale = rect.height / VIEW_HEIGHT;
+      const containScale = Math.min(widthScale, heightScale);
+      const coverScale = Math.max(widthScale, heightScale);
+      const cropCap = containScale / (1 - maxCropFraction);
+      const rawScale = Math.min(coverScale, cropCap);
+
       const intScale = Math.floor(rawScale);
-      const scale = intScale >= 1 ? intScale : rawScale;
+      const keepsEnoughSize = intScale >= 1 && intScale / rawScale >= 0.85;
+      const scale = keepsEnoughSize ? intScale : rawScale;
       canvas.style.width = `${VIEW_WIDTH * scale}px`;
       canvas.style.height = `${VIEW_HEIGHT * scale}px`;
     };

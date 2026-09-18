@@ -29,6 +29,7 @@ export class AudioManager {
   private nextStepTime = 0;
   private stepIndex = 0;
   private readonly lookahead = 0.12;
+  private autoResumeAttached = false;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -65,6 +66,29 @@ export class AudioManager {
     this.sfxGain.connect(this.masterGain);
 
     this.noiseBuffer = this.createNoiseBuffer();
+  }
+
+  /**
+   * Browsers only let an AudioContext start/resume from inside a user
+   * gesture. We already call `ensureContext()` from the Play and Mute
+   * button handlers, which covers the common case — but some browsers
+   * (mobile Safari especially) are stricter about what counts as "close
+   * enough" to the gesture, and can leave the context stuck in
+   * `suspended` even after that call. This is a safety net: it listens
+   * for the next handful of interaction types anywhere on the page and
+   * retries the resume, so audio recovers on the player's very next tap,
+   * click, or key press instead of staying silent for the whole session.
+   */
+  attachAutoResume() {
+    if (this.autoResumeAttached || typeof window === "undefined") return;
+    this.autoResumeAttached = true;
+    const tryResume = () => {
+      if (this.ctx && this.ctx.state === "suspended") {
+        this.ctx.resume();
+      }
+    };
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchend"];
+    for (const evt of events) window.addEventListener(evt, tryResume);
   }
 
   toggleMute(): boolean {

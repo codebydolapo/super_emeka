@@ -13,7 +13,10 @@ interface Props {
 
 export default function HUD({ hud, muted, onToggleMute, onPause }: Props) {
   return (
-    <div className="absolute inset-0 z-30 p-2 sm:p-3 flex flex-col gap-1 pointer-events-none">
+    <div
+      className="absolute inset-0 z-30 px-2 pb-2 sm:px-3 sm:pb-3 flex flex-col gap-1 pointer-events-none"
+      style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))" }}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-1 bg-black/60 border-2 border-black px-2 py-1 pointer-events-auto">
           <div className="flex items-center gap-2 text-[9px] sm:text-[11px] text-white">
@@ -41,7 +44,7 @@ export default function HUD({ hud, muted, onToggleMute, onPause }: Props) {
             <button
               onClick={onPause}
               aria-label="Pause"
-              className="flex items-center justify-center w-10 h-10 border-2 border-black bg-white text-black shadow-[3px_3px_0_#000] active:translate-y-0.5 active:shadow-none"
+              className="btn-pixel btn-pixel-white flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11"
             >
               ⏸
             </button>

@@ -57,3 +57,36 @@ body {
 .animate-marquee {
   animation: marquee 12s linear infinite;
 }
+
+/* Shared "pixel button" look: a hard border, a punchy offset shadow, a
+   glossy top-lit gradient, and a satisfying press (shadow tucks away,
+   button nudges toward the shadow's old position). Used everywhere from
+   the start screen to the touch controls so every clickable thing in the
+   game feels like the same physical object. */
+.btn-pixel {
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-pixel:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+  filter: brightness(0.94);
+}
+.btn-pixel-yellow {
+  background: linear-gradient(to bottom, #ffe58a 0%, #ffd400 55%, #e6bf00 100%);
+  color: #241a00;
+}
+.btn-pixel-white {
+  background: linear-gradient(to bottom, #ffffff 0%, #eeeeee 55%, #d4d4d4 100%);
+  color: #111111;
+}
+.btn-pixel-red {
+  background: linear-gradient(to bottom, #ff7a6b 0%, #e0453a 55%, #a8241c 100%);
+  color: #ffffff;
+}
+.btn-pixel-dark {
+  background: linear-gradient(to bottom, #3a3a45 0%, #232329 55%, #141417 100%);
+  color: #ffffff;
+}

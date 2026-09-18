@@ -39,16 +39,10 @@ export default function StageClearModal({ summary, onPlayAgain, onMainMenu }: Pr
         </div>
 
         <div className="flex flex-col gap-2">
-          <button
-            onClick={onPlayAgain}
-            className="w-full py-3 bg-naija-yellow text-black text-xs border-2 border-black shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none transition-transform"
-          >
+          <button onClick={onPlayAgain} className="btn-pixel btn-pixel-yellow w-full py-3 text-xs">
             🔁 PLAY AGAIN
           </button>
-          <button
-            onClick={onMainMenu}
-            className="w-full py-3 bg-white text-black text-xs border-2 border-black shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none transition-transform"
-          >
+          <button onClick={onMainMenu} className="btn-pixel btn-pixel-white w-full py-3 text-xs">
             🏠 MAIN MENU
           </button>
         </div>
