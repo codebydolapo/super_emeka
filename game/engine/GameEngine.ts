@@ -51,7 +51,20 @@ export class GameEngine {
   private timeLeft = 0;
   private highScore = 0;
   private phase: GamePhase = "playing";
-  private checkpoint = { x: 0, y: 0 };
+  // A short trailing history of verified-safe grounded positions, sampled
+  // periodically, instead of a single point updated every grounded frame.
+  // The old approach saved the checkpoint at literally the last tile the
+  // player stood on — including the one right before they walked into a
+  // gap or an enemy — so dying there respawned them right back at the
+  // edge of the same hazard with zero reaction time. Looking a fixed
+  // distance back through this history guarantees actual breathing room,
+  // while still only ever landing on ground the player already stood on
+  // safely (never mid-air over a hazard).
+  private checkpointHistory: { x: number; y: number }[] = [];
+  private checkpointSampleTimer = 0;
+  private static readonly CHECKPOINT_SAMPLE_INTERVAL = 0.1; // seconds between samples
+  private static readonly CHECKPOINT_MAX_SAMPLES = 30; // ~3s of lookback, comfortably more than needed
+  private static readonly CHECKPOINT_BUFFER_PX = 48; // ~3 tiles of breathing room on respawn
   private globalTime = 0;
   private timeAccumForSeconds = 0;
   private throwCooldown = 0;
@@ -78,7 +91,7 @@ export class GameEngine {
 
     this.level = createLevel(1);
     this.player = new Player(this.level.playerStart.x, this.level.playerStart.y);
-    this.checkpoint = { x: this.player.x, y: this.player.y };
+    this.checkpointHistory = [{ x: this.player.x, y: this.player.y }];
     this.timeLeft = this.level.timeLimitSeconds;
     this.highScore = getHighScore();
 
@@ -205,7 +218,8 @@ export class GameEngine {
     this.player.respawnAt(this.level.playerStart.x, this.level.playerStart.y);
     this.player.vx = 0;
     this.player.vy = 0;
-    this.checkpoint = { x: this.level.playerStart.x, y: this.level.playerStart.y };
+    this.checkpointHistory = [{ x: this.level.playerStart.x, y: this.level.playerStart.y }];
+    this.checkpointSampleTimer = 0;
 
     this.timeLeft = this.level.timeLimitSeconds;
     this.timeAccumForSeconds = 0;
@@ -259,7 +273,14 @@ export class GameEngine {
     this.handleDanfoGoal();
 
     if (this.player.onGround) {
-      this.checkpoint = { x: this.player.x, y: this.player.y };
+      this.checkpointSampleTimer += dt;
+      if (this.checkpointSampleTimer >= GameEngine.CHECKPOINT_SAMPLE_INTERVAL) {
+        this.checkpointSampleTimer = 0;
+        this.checkpointHistory.push({ x: this.player.x, y: this.player.y });
+        if (this.checkpointHistory.length > GameEngine.CHECKPOINT_MAX_SAMPLES) {
+          this.checkpointHistory.shift();
+        }
+      }
     }
 
     this.timeAccumForSeconds += dt;
@@ -445,7 +466,29 @@ export class GameEngine {
       return;
     }
     this.player.health = MAX_HEALTH;
-    this.player.respawnAt(this.checkpoint.x, this.checkpoint.y);
+    const spot = this.resolveCheckpoint();
+    this.player.respawnAt(spot.x, spot.y);
+  }
+
+  /** Picks the most recent sampled position that's at least
+   * `CHECKPOINT_BUFFER_PX` further back (smaller x — "behind" always
+   * means "less progress toward the Danfo," never just "wherever they
+   * came from a moment ago") than where the player currently is, scanning
+   * newest-to-oldest. A deliberately one-sided (not `Math.abs`) check: if
+   * the player had backtracked left before dying, we still want a spot
+   * behind their overall progress, not one further ahead that a naive
+   * distance check could otherwise match. Falls back to the oldest
+   * sample on hand if they haven't gone far enough yet for a full
+   * buffer's worth. */
+  private resolveCheckpoint(): { x: number; y: number } {
+    const history = this.checkpointHistory;
+    if (history.length === 0) return this.level.playerStart;
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (this.player.x - history[i].x >= GameEngine.CHECKPOINT_BUFFER_PX) {
+        return history[i];
+      }
+    }
+    return history[0];
   }
 
   private handleDanfoGoal() {

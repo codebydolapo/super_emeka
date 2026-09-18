@@ -11,7 +11,7 @@ interface Props {
 
 // Shell & retro styling
 const SHELL =
-  "pointer-events-auto from-[#2b2b2e] to-[#0c0c0d] rounded-3xl border border-black/80 shadow-[0_6px_0_rgba(0,0,0,0.8),0_10px_20px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-sm";
+  "pointer-events-auto bg-gradient-to-b from-[#2b2b2e] to-[#0c0c0d] rounded-3xl border border-black/80 shadow-[0_6px_0_rgba(0,0,0,0.8),0_10px_20px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-sm";
 
 const PAD_FACE =
   "bg-gradient-to-b from-[#3c3c3e] to-[#18181a] text-[#cfcfd2] active:from-[#252527] active:to-[#0f0f10]";
