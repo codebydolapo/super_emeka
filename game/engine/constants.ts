@@ -55,7 +55,6 @@ export const BOSS_PROJECTILE_SPEED = 130; // slower than the player's slipper â€
 
 export const STORAGE_KEYS = {
   highScore: "super-emeka:high-score",
-  muted: "super-emeka:muted",
 };
 
 export type TileType =

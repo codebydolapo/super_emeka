@@ -10,6 +10,54 @@ interface Props {
   onHowToPlay: () => void;
 }
 
+interface CloudSpec {
+  top: string;
+  scale: number;
+  duration: number;
+  delay: number;
+  opacity: number;
+}
+
+// Simple blocky pixel-cloud shape (three offset rects, same silhouette the
+// in-game canvas background uses) drifting right-to-left forever, so the
+// menu reads as a living sky rather than a static poster — the same idea
+// as the drifting clouds in the classic side-scrollers this is patterned
+// after.
+function PixelCloud({ top, scale, duration, delay, opacity }: CloudSpec) {
+  return (
+    <div
+      className="absolute left-full pointer-events-none"
+      style={{
+        top,
+        opacity,
+        animation: `drift-cloud ${duration}s linear ${delay}s infinite`,
+      }}
+    >
+      <div className="relative" style={{ width: 64 * scale, height: 24 * scale }}>
+        <div
+          className="absolute bg-white"
+          style={{ left: 0, top: 10 * scale, width: 40 * scale, height: 10 * scale }}
+        />
+        <div
+          className="absolute bg-white"
+          style={{ left: 10 * scale, top: 0, width: 28 * scale, height: 12 * scale }}
+        />
+        <div
+          className="absolute bg-white"
+          style={{ left: 20 * scale, top: 14 * scale, width: 24 * scale, height: 8 * scale }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const CLOUDS: CloudSpec[] = [
+  { top: "8%", scale: 1.3, duration: 26, delay: 0, opacity: 0.95 },
+  { top: "18%", scale: 0.8, duration: 34, delay: -14, opacity: 0.75 },
+  { top: "4%", scale: 0.6, duration: 40, delay: -6, opacity: 0.6 },
+  { top: "26%", scale: 1, duration: 30, delay: -22, opacity: 0.85 },
+];
+
 export default function StartScreen({
   highScore,
   muted,
@@ -19,6 +67,17 @@ export default function StartScreen({
 }: Props) {
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between bg-gradient-to-b from-sky-400 via-sky-300 to-naija-green overflow-hidden px-4 py-6">
+      {/* Sun with a slow, gentle pulse — cheap, but it keeps the whole
+          scene from feeling like a frozen screenshot. */}
+      <div
+        className="absolute rounded-full bg-naija-yellow/70"
+        style={{ top: "6%", right: "12%", width: 56, height: 56, animation: "sun-pulse 4s ease-in-out infinite" }}
+      />
+
+      {CLOUDS.map((cloud, i) => (
+        <PixelCloud key={i} {...cloud} />
+      ))}
+
       <div className="absolute top-3 right-3 z-20">
         <MuteButton muted={muted} onToggle={onToggleMute} />
       </div>

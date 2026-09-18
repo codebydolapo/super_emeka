@@ -58,6 +58,31 @@ body {
   animation: marquee 12s linear infinite;
 }
 
+/* Drifting start-screen clouds: start just off the right edge (see
+   `left-full` on the element itself) and translate far enough left to
+   clear any container size the game area can be — capped-width desktop,
+   full-bleed mobile, everything in between. */
+@keyframes drift-cloud {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-1200px);
+  }
+}
+
+@keyframes sun-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.9;
+  }
+}
+
 /* Shared "pixel button" look: a hard border, a punchy offset shadow, a
    glossy top-lit gradient, and a satisfying press (shadow tucks away,
    button nudges toward the shadow's old position). Used everywhere from

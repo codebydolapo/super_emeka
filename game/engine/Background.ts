@@ -38,28 +38,55 @@ export function drawBackground(
   ctx.arc(258, 28, 12, 0, Math.PI * 2);
   ctx.fill();
 
-  drawClouds(ctx, camX);
-  drawSkyline(ctx, camX);
+  drawClouds(ctx, camX, time);
+  drawSkyline(ctx, camX, time);
   drawBridge(ctx, camX);
   drawDistantDanfo(ctx, camX, time);
-  drawStallsAndLights(ctx, camX);
+  drawStallsAndLights(ctx, camX, time);
 }
 
-function drawClouds(ctx: CanvasRenderingContext2D, camX: number) {
-  const parallax = 0.08;
-  const period = 130;
-  const offset = wrap(camX * parallax, period);
-  ctx.fillStyle = "rgba(255,255,255,0.8)";
+// Classic side-scroller clouds drift on their own, independent of whether
+// the camera is moving — a stationary player still sees a living sky
+// instead of a frozen postcard. Two layers at different speeds/sizes give
+// a bit of depth.
+function drawClouds(ctx: CanvasRenderingContext2D, camX: number, time: number) {
+  drawCloudLayer(ctx, camX, time, {
+    parallax: 0.08,
+    driftSpeed: 4,
+    period: 130,
+    baseY: 20,
+    scale: 1,
+    alpha: 0.85,
+  });
+  drawCloudLayer(ctx, camX, time, {
+    parallax: 0.05,
+    driftSpeed: 2.4,
+    period: 170,
+    baseY: 42,
+    scale: 0.7,
+    alpha: 0.55,
+  });
+}
+
+function drawCloudLayer(
+  ctx: CanvasRenderingContext2D,
+  camX: number,
+  time: number,
+  opts: { parallax: number; driftSpeed: number; period: number; baseY: number; scale: number; alpha: number }
+) {
+  const { parallax, driftSpeed, period, baseY, scale, alpha } = opts;
+  const offset = wrap(camX * parallax + time * driftSpeed, period);
+  ctx.fillStyle = `rgba(255,255,255,${alpha})`;
   for (let i = -1; i < VIEW_WIDTH / period + 2; i++) {
     const cx = i * period - offset;
-    const cy = 20 + ((i * 23) % 14);
-    ctx.fillRect(cx, cy, 20, 5);
-    ctx.fillRect(cx + 5, cy - 3, 14, 4);
-    ctx.fillRect(cx + 10, cy + 5, 12, 3);
+    const cy = baseY + ((i * 23) % 14);
+    ctx.fillRect(cx, cy, 20 * scale, 5 * scale);
+    ctx.fillRect(cx + 5 * scale, cy - 3 * scale, 14 * scale, 4 * scale);
+    ctx.fillRect(cx + 10 * scale, cy + 5 * scale, 12 * scale, 3 * scale);
   }
 }
 
-function drawSkyline(ctx: CanvasRenderingContext2D, camX: number) {
+function drawSkyline(ctx: CanvasRenderingContext2D, camX: number, time: number) {
   const parallax = 0.15;
   const offset = camX * parallax;
   const period = 46;
@@ -83,12 +110,18 @@ function drawSkyline(ctx: CanvasRenderingContext2D, camX: number) {
       ctx.fillRect(bx + bw / 2 - 3, by - 5, 6, 5);
     }
 
-    // Clean window grid (deterministic per building, not per-pixel noise).
-    ctx.fillStyle = palette.window;
+    // Clean window grid (deterministic per building, not per-pixel noise),
+    // with the occasional window slowly flickering on/off — like someone
+    // just walked into (or out of) a room — so the skyline isn't static.
     for (let wy = 6; wy < bh - 4; wy += 7) {
       for (let wx = 4; wx < bw - 4; wx += 7) {
         const lit = (wx + wy + i * 5) % 3 !== 0;
-        if (lit) ctx.fillRect(bx + wx, by + wy, 3, 4);
+        if (!lit) continue;
+        const flickerSeed = wx * 13 + wy * 7 + i * 31;
+        const flickerPhase = Math.sin(time * 0.6 + flickerSeed);
+        const isFlickering = flickerSeed % 11 === 0 && flickerPhase > 0.85;
+        ctx.fillStyle = isFlickering ? "rgba(255,247,214,0.25)" : palette.window;
+        ctx.fillRect(bx + wx, by + wy, 3, 4);
       }
     }
   }
@@ -125,7 +158,7 @@ function drawBridge(ctx: CanvasRenderingContext2D, camX: number) {
   ctx.fillRect(0, deckY - 5, VIEW_WIDTH, 1);
 }
 
-function drawStallsAndLights(ctx: CanvasRenderingContext2D, camX: number) {
+function drawStallsAndLights(ctx: CanvasRenderingContext2D, camX: number, time: number) {
   const parallax = 0.55;
   const offset = camX * parallax;
   const period = 90;
@@ -134,8 +167,10 @@ function drawStallsAndLights(ctx: CanvasRenderingContext2D, camX: number) {
   for (let i = -1; i < VIEW_WIDTH / period + 2; i++) {
     const sx = i * period - wrap(offset, period);
 
-    // Streetlight: pole + lamp housing + a soft glow.
-    ctx.fillStyle = "rgba(255,230,120,0.25)";
+    // Streetlight: pole + lamp housing + a gently pulsing glow, offset per
+    // light so they don't all breathe in lockstep.
+    const pulse = 0.22 + Math.sin(time * 1.6 + i * 2.1) * 0.06;
+    ctx.fillStyle = `rgba(255,230,120,${pulse})`;
     ctx.beginPath();
     ctx.arc(sx + 11, baseY - 40, 7, 0, Math.PI * 2);
     ctx.fill();

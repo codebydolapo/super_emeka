@@ -5,7 +5,6 @@ import {
   STEP_SECONDS,
   noteFreq,
 } from "./chiptunes";
-import { STORAGE_KEYS } from "../engine/constants";
 
 type OscType = OscillatorType;
 
@@ -31,12 +30,12 @@ export class AudioManager {
   private readonly lookahead = 0.12;
   private autoResumeAttached = false;
 
-  constructor() {
-    if (typeof window !== "undefined") {
-      const saved = window.localStorage.getItem(STORAGE_KEYS.muted);
-      this.muted = saved === "1";
-    }
-  }
+  // Sound always starts on. Mute is a per-session toggle only (not
+  // persisted) — a game with music this quiet has no business defaulting
+  // to silent, and persisting mute meant one accidental tap on the
+  // speaker icon would leave every future visit silent with no obvious
+  // reason why.
+  constructor() {}
 
   get isMuted() {
     return this.muted;
@@ -45,7 +44,10 @@ export class AudioManager {
   /** Must be called from within a user-gesture handler (click/touch/key). */
   ensureContext() {
     if (this.ctx) {
-      if (this.ctx.state === "suspended") this.ctx.resume();
+      // Safe to call even when already running — this is cheap insurance
+      // against browsers that leave the context suspended despite the
+      // resume attempt at creation time below.
+      this.ctx.resume().catch(() => {});
       return;
     }
     const Ctor =
@@ -66,6 +68,7 @@ export class AudioManager {
     this.sfxGain.connect(this.masterGain);
 
     this.noiseBuffer = this.createNoiseBuffer();
+    this.ctx.resume().catch(() => {});
   }
 
   /**
@@ -99,9 +102,6 @@ export class AudioManager {
         this.ctx!.currentTime,
         0.02
       );
-    }
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEYS.muted, this.muted ? "1" : "0");
     }
     return this.muted;
   }
