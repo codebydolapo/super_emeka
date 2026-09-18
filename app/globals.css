@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: none;
+  background: #0a0a12;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.pixel-border {
+  box-shadow:
+    0 0 0 2px #000,
+    0 0 0 4px #ffd400;
+}
+
+.text-shadow-pixel {
+  text-shadow: 2px 2px 0 #000;
+}
+
+/* Simple retro scanline overlay */
+.scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 40;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 12s linear infinite;
+}
