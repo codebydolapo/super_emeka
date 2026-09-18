@@ -181,7 +181,3 @@ Roughly in order of "probably worth doing first":
 - **No deployment configured.** This will deploy to Vercel with zero configuration (it's a stock Next.js app with no server-side requirements), but that hasn't actually been done yet.
 - **Git remote is set up but nothing has been pushed.** The repo is initialized, `origin` points at `https://github.com/codebydolapo/super_emeka.git`, and everything is staged — but commits/pushes were intentionally left for a human to do.
 - Ideas that were discussed but not built: more enemy variety beyond Hawker/Agbero, a proper boss encounter (vs. the current "barricade you can bypass or wear down"), a leaderboard (would need a backend — currently `localStorage` only, so high scores are per-browser), and real recorded music/SFX as an alternative to the synthesized audio if the chiptune aesthetic ever needs to grow up.
-
-## A note on tone, if an AI is reading this to continue the work
-
-The person driving this project cares about it actually feeling good to play, not just "technically meeting the spec." Twice now, feedback came back as "this doesn't feel right" (jump height, character looking like a stump) rather than a precise bug report, and the right response both times was to actually investigate *why* — measure the jump math, screenshot the sprite at high zoom — rather than guess at a fix. If something feels off, that instinct is worth trusting and worth digging into before touching numbers blindly.
